@@ -1,0 +1,4 @@
+packages:
+  - "frontend"
+  - "ts-game-of-life"
+  - "wasm-game-of-life/pkg"
