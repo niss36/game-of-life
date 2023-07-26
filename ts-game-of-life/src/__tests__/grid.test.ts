@@ -3,6 +3,7 @@ import {
   convertCoordinatesToIndex,
   createGrid,
   getGridItem,
+  getGridItemWrapping,
 } from "grid";
 import { it, expect, describe } from "vitest";
 
@@ -33,5 +34,19 @@ describe("The function to get an item from a grid", () => {
     const grid = createGrid(5, 5, () => 0);
 
     expect(getGridItem(grid, [5, 3])).toBeUndefined();
+  });
+});
+
+describe("The function to get an item from a grid wrapping around the edges", () => {
+  it("returns the correct item", () => {
+    const grid = createGrid(5, 5, (coordinates) => coordinates);
+
+    expect(getGridItemWrapping(grid, [1, 2])).toStrictEqual([1, 2]);
+  });
+
+  it("returns the correct item when the coordinates are out of bounds", () => {
+    const grid = createGrid(5, 5, (coordinates) => coordinates);
+
+    expect(getGridItemWrapping(grid, [6, 7])).toStrictEqual([1, 2]);
   });
 });

@@ -1,42 +1,5 @@
 import { Cell, displayCell, generateRandomCell, parseCell } from "cell";
-import { Grid, createGrid, getGridItem } from "grid";
-
-enum Offset {
-  TopLeft = "TopLeft",
-  Top = "Top",
-  TopRight = "TopRight",
-  Left = "Left",
-  Right = "Right",
-  BottomLeft = "BottomLeft",
-  Bottom = "Bottom",
-  BottomRight = "BottomRight",
-}
-
-const applyOffset = (
-  offset: Offset,
-  coordinates: [number, number]
-): [number, number] => {
-  const [x, y] = coordinates;
-
-  switch (offset) {
-    case Offset.TopLeft:
-      return [x - 1, y - 1];
-    case Offset.Top:
-      return [x, y - 1];
-    case Offset.TopRight:
-      return [x + 1, y - 1];
-    case Offset.Left:
-      return [x - 1, y];
-    case Offset.Right:
-      return [x + 1, y];
-    case Offset.BottomLeft:
-      return [x - 1, y + 1];
-    case Offset.Bottom:
-      return [x, y + 1];
-    case Offset.BottomRight:
-      return [x + 1, y + 1];
-  }
-};
+import { Grid, createGrid, getGridItem, getGridItemWrapping } from "grid";
 
 export class Universe {
   private cells: Grid<Cell>;
@@ -54,20 +17,24 @@ export class Universe {
   }
 
   countLiveNeighbours(coordinates: [number, number]): number {
-    const neighbourCoordinates = Object.values(Offset).map((offset) =>
-      applyOffset(offset, coordinates)
-    );
+    let count = 0;
 
-    const neighbourStates = neighbourCoordinates.map((coordinates) =>
-      getGridItem(this.cells, coordinates)
-    );
+    for (const columnOffset of [-1, 0, 1]) {
+      for (const rowOffset of [-1, 0, 1]) {
+        if (columnOffset === 0 && rowOffset === 0) {
+          continue;
+        }
 
-    const numberOfLiveNeighbours = neighbourStates.reduce(
-      (total, cell) => (cell === undefined ? total : total + cell),
-      0
-    );
+        const neighbourCoordinates: [number, number] = [
+          coordinates[0] + columnOffset,
+          coordinates[1] + rowOffset,
+        ];
 
-    return numberOfLiveNeighbours;
+        count += getGridItemWrapping(this.cells, neighbourCoordinates);
+      }
+    }
+
+    return count;
   }
 
   getNewState(coordinates: [number, number]): Cell {
