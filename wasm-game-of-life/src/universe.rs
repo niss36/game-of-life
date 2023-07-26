@@ -7,48 +7,6 @@ use crate::cell::Cell;
 use crate::errors::ParseUniverseError;
 use crate::grid::Grid;
 
-#[derive(Debug, Clone, Copy)]
-enum Offset {
-    TopLeft,
-    Top,
-    TopRight,
-    Left,
-    Right,
-    BottomLeft,
-    Bottom,
-    BottomRight,
-}
-
-impl Offset {
-    const OFFSETS: [Self; 8] = [
-        Self::TopLeft,
-        Self::Top,
-        Self::TopRight,
-        Self::Left,
-        Self::Right,
-        Self::BottomLeft,
-        Self::Bottom,
-        Self::BottomRight,
-    ];
-
-    fn get_coordinates(self, base_coordinates: (usize, usize)) -> Option<(usize, usize)> {
-        use Offset::*;
-
-        let (x, y) = base_coordinates;
-
-        match self {
-            TopLeft => Some((x.checked_sub(1)?, y.checked_sub(1)?)),
-            Top => Some((x, y.checked_sub(1)?)),
-            TopRight => Some((x.checked_add(1)?, y.checked_sub(1)?)),
-            Left => Some((x.checked_sub(1)?, y)),
-            Right => Some((x.checked_add(1)?, y)),
-            BottomLeft => Some((x.checked_sub(1)?, y.checked_add(1)?)),
-            Bottom => Some((x, y.checked_add(1)?)),
-            BottomRight => Some((x.checked_add(1)?, y.checked_add(1)?)),
-        }
-    }
-}
-
 #[wasm_bindgen]
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Universe {
@@ -69,19 +27,29 @@ impl Universe {
         }
     }
 
-    fn get_number_of_live_neighbours(&self, coordinates: (usize, usize)) -> u8 {
-        let neighbour_states = Offset::OFFSETS
-            .into_iter()
-            .filter_map(|offset| offset.get_coordinates(coordinates))
-            .filter_map(|neighbour_coordinates| self.cells.get(neighbour_coordinates));
+    fn count_live_neighbours(&self, coordinates: (usize, usize)) -> u8 {
+        let mut count = 0;
 
-        neighbour_states.map(|&cell| cell as u8).sum()
+        for column_offset in [self.cells.columns - 1, 0, 1] {
+            for row_offset in [self.cells.rows - 1, 0, 1] {
+                if column_offset == 0 && row_offset == 0 {
+                    continue;
+                }
+
+                let neighbour_coordinates =
+                    (coordinates.0 + column_offset, coordinates.1 + row_offset);
+
+                count += *self.cells.get_wrapping(neighbour_coordinates) as u8;
+            }
+        }
+
+        count
     }
 
     fn get_new_state(&self, coordinates: (usize, usize)) -> Cell {
         use Cell::*;
 
-        let number_of_live_neighbours = self.get_number_of_live_neighbours(coordinates);
+        let number_of_live_neighbours = self.count_live_neighbours(coordinates);
 
         let current_state = self.cells.get(coordinates).unwrap_or(&Dead);
 
@@ -171,17 +139,34 @@ impl Display for Universe {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_number_of_live_neighbours() {
-        let universe: Universe = "##\n##".try_into().unwrap();
+    const MOCK_UNIVERSE_WITH_PADDING: &str = "\
+....
+.##.
+.##.
+....";
 
-        assert_eq!(3, universe.get_number_of_live_neighbours((1, 0)));
+    const MOCK_UNIVERSE_WITHOUT_PADDING: &str = "\
+.#
+#.";
+
+    #[test]
+    fn count_live_neighbours_works() {
+        let universe: Universe = MOCK_UNIVERSE_WITH_PADDING.try_into().unwrap();
+
+        assert_eq!(3, universe.count_live_neighbours((2, 1)));
     }
 
     #[test]
-    fn test_get_new_state() {
-        let universe: Universe = "##\n##".try_into().unwrap();
+    fn count_live_neighbours_works_across_edge() {
+        let universe: Universe = MOCK_UNIVERSE_WITHOUT_PADDING.try_into().unwrap();
 
-        assert_eq!(Cell::Alive, universe.get_new_state((0, 0)));
+        assert_eq!(4, universe.count_live_neighbours((0, 0)));
+    }
+
+    #[test]
+    fn get_new_state_works() {
+        let universe: Universe = MOCK_UNIVERSE_WITH_PADDING.try_into().unwrap();
+
+        assert_eq!(Cell::Alive, universe.get_new_state((1, 1)));
     }
 }

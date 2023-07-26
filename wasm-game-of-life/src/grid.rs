@@ -46,6 +46,12 @@ impl<T> Grid<T> {
         self.items
             .get_mut(coordinates_to_index(self.columns, coordinates))
     }
+
+    pub fn get_wrapping(&self, coordinates: (usize, usize)) -> &T {
+        let wrapped_coordinates = (coordinates.0 % self.columns, coordinates.1 % self.rows);
+
+        &self.items[coordinates_to_index(self.columns, wrapped_coordinates)]
+    }
 }
 
 #[cfg(test)]
