@@ -23,9 +23,13 @@ export default function GameOfLife() {
     return () => clearInterval(interval);
   }, []);
 
+  console.time("Universe.render");
+  const renderedUniverse = universe.render();
+  console.timeEnd("Universe.render");
+
   return (
     <div>
-      <pre>{universe.render()}</pre>
+      <pre>{renderedUniverse}</pre>
     </div>
   );
 }
