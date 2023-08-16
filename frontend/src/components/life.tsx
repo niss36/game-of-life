@@ -2,30 +2,29 @@ import { Universe } from "wasm-game-of-life";
 import { useEffect, useState } from "react";
 
 export default function GameOfLife() {
-  const [universe, setUniverse] = useState(Universe.new_empty(0, 0));
+  const [renderedUniverse, setRenderedUniverse] = useState("");
 
   useEffect(() => {
-    setUniverse(Universe.new_random(100, 50));
+    let universe = Universe.new_random(500, 500);
+
+    const interval = setInterval(() => {
+      console.time("Universe.step");
+      const newUniverse = universe.step();
+      console.timeEnd("Universe.step");
+
+      universe.free();
+      universe = newUniverse;
+
+      console.time("Universe.render");
+      setRenderedUniverse(universe.render());
+      console.timeEnd("Universe.render");
+    }, 50);
+
+    return () => {
+      clearInterval(interval);
+      universe.free();
+    };
   }, []);
-
-  useEffect(() => {
-    const interval = setInterval(
-      () =>
-        setUniverse((u) => {
-          console.time("Universe.step");
-          const newUniverse = u.step();
-          console.timeEnd("Universe.step");
-          return newUniverse;
-        }),
-      50
-    );
-
-    return () => clearInterval(interval);
-  }, []);
-
-  console.time("Universe.render");
-  const renderedUniverse = universe.render();
-  console.timeEnd("Universe.render");
 
   return (
     <div>
