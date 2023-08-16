@@ -103,4 +103,8 @@ export class Universe {
 
     return rows.join("");
   }
+
+  free(): void {
+    // No-op because JS is garbage collected
+  }
 }
