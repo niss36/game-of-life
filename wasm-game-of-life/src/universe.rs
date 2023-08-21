@@ -72,10 +72,6 @@ impl Universe {
     pub fn parse(value: &str) -> Result<Universe, ParseUniverseError> {
         value.try_into()
     }
-
-    pub fn render(&self) -> String {
-        self.to_string()
-    }
 }
 
 impl TryFrom<&str> for Universe {
