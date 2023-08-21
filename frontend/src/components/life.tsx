@@ -16,7 +16,7 @@ export default function GameOfLife() {
       universe = newUniverse;
 
       console.time("Universe.render");
-      setRenderedUniverse(universe.render());
+      setRenderedUniverse(universe.render_to_text());
       console.timeEnd("Universe.render");
     }, 50);
 

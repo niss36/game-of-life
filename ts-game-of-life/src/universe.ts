@@ -91,7 +91,7 @@ export class Universe {
     });
   }
 
-  render(): string {
+  render_to_text(): string {
     const rows = Array.from({ length: this.cells.rows }, (_, rowIndex) => {
       const row = this.cells.items.slice(
         rowIndex * this.cells.columns,
