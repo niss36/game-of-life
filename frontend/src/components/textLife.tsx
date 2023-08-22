@@ -1,7 +1,7 @@
 import { Universe } from "wasm-game-of-life";
 import { useEffect, useState } from "react";
 
-export default function GameOfLife() {
+export default function TextGameOfLife() {
   const [renderedUniverse, setRenderedUniverse] = useState("");
 
   useEffect(() => {
