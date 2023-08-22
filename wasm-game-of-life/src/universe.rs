@@ -1,7 +1,7 @@
 use std;
 use std::fmt::Display;
 
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::cell::Cell;
 use crate::errors::ParseUniverseError;
@@ -10,7 +10,7 @@ use crate::grid::Grid;
 #[wasm_bindgen]
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Universe {
-    cells: Grid<Cell>,
+    pub(crate) cells: Grid<Cell>,
 }
 
 #[wasm_bindgen]
