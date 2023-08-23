@@ -1,6 +1,6 @@
 #version 300 es
 
-precision highp float;
+precision mediump float;
 
 uniform vec2 universe_size;
 uniform sampler2D cells;
