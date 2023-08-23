@@ -1,33 +1,37 @@
 use itertools::{iproduct, Itertools};
 use js_sys::Uint32Array;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
-use web_sys::{console, WebGl2RenderingContext, WebGlProgram, WebGlShader};
+use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::universe::Universe;
 
 #[wasm_bindgen]
+pub struct WebGlProgramInfo {
+    vertex_count: i32,
+    cells_uniform_location: WebGlUniformLocation,
+}
+
+#[wasm_bindgen]
 impl Universe {
-    pub fn render_to_web_gl(
+    pub fn setup_web_gl(
         &self,
-        context: WebGl2RenderingContext,
+        context: &WebGl2RenderingContext,
         cell_size: usize,
-    ) -> Result<(), JsValue> {
-        console::time_with_label("Compile shaders");
+    ) -> Result<WebGlProgramInfo, JsValue> {
         let vert_shader = compile_shader(
-            &context,
+            context,
             WebGl2RenderingContext::VERTEX_SHADER,
             include_str!("vertex_shader.glsl"),
         )?;
 
         let frag_shader = compile_shader(
-            &context,
+            context,
             WebGl2RenderingContext::FRAGMENT_SHADER,
             include_str!("fragment_shader.glsl"),
         )?;
 
-        let program = link_program(&context, &vert_shader, &frag_shader)?;
+        let program = link_program(context, &vert_shader, &frag_shader)?;
         context.use_program(Some(&program));
-        console::time_end_with_label("Compile shaders");
 
         let position_attribute_location = context.get_attrib_location(&program, "position");
         let coordinates_attribute_location = context.get_attrib_location(&program, "coordinates");
@@ -59,7 +63,6 @@ impl Universe {
             (rows - 1) as f32,
         );
 
-        console::time_with_label("Compute vertices");
         let vertices = iproduct!(0..columns, 0..rows)
             .flat_map(|(column, row)| -> [usize; 24] {
                 let x_start = column * (cell_size + 1) + 1;
@@ -79,7 +82,6 @@ impl Universe {
             })
             .map(|value| value as u32)
             .collect_vec();
-        console::time_end_with_label("Compute vertices");
 
         let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
@@ -129,6 +131,17 @@ impl Universe {
 
         context.bind_vertex_array(Some(&vao));
 
+        Ok(WebGlProgramInfo {
+            vertex_count: (vertices.len() / 4) as i32,
+            cells_uniform_location,
+        })
+    }
+
+    pub fn render_to_web_gl(
+        &self,
+        context: &WebGl2RenderingContext,
+        program_info: &WebGlProgramInfo,
+    ) -> Result<(), JsValue> {
         let cells = self
             .cells
             .items
@@ -144,8 +157,8 @@ impl Universe {
                 WebGl2RenderingContext::TEXTURE_2D,
                 0,
                 WebGl2RenderingContext::ALPHA as i32,
-                columns as i32,
-                rows as i32,
+                self.cells.columns as i32,
+                self.cells.rows as i32,
                 0,
                 WebGl2RenderingContext::ALPHA,
                 WebGl2RenderingContext::UNSIGNED_BYTE,
@@ -175,14 +188,16 @@ impl Universe {
         context.active_texture(WebGl2RenderingContext::TEXTURE0);
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
 
-        context.uniform1i(Some(&cells_uniform_location), 0);
-
-        let vertices_count = (vertices.len() / 4) as i32;
+        context.uniform1i(Some(&program_info.cells_uniform_location), 0);
 
         context.clear_color(0.75, 0.75, 0.75, 1.0);
         context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-        context.draw_arrays(WebGl2RenderingContext::TRIANGLES, 0, vertices_count);
+        context.draw_arrays(
+            WebGl2RenderingContext::TRIANGLES,
+            0,
+            program_info.vertex_count,
+        );
 
         Ok(())
     }

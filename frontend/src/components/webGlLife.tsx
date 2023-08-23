@@ -22,6 +22,7 @@ export default function WebGlGameOfLife() {
     }
 
     let universe = Universe.new_random(columns, rows);
+    const programInfo = universe.setup_web_gl(context, CELL_SIZE);
 
     const interval = setInterval(() => {
       console.time("Universe.step");
@@ -32,13 +33,14 @@ export default function WebGlGameOfLife() {
       universe = newUniverse;
 
       console.time("Universe.render_to_web_gl");
-      universe.render_to_web_gl(context, CELL_SIZE);
+      universe.render_to_web_gl(context, programInfo);
       console.timeEnd("Universe.render_to_web_gl");
     }, 50);
 
     return () => {
       clearInterval(interval);
       universe.free();
+      programInfo.free();
     };
   }, []);
 
