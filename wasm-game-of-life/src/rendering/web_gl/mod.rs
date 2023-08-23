@@ -1,7 +1,9 @@
 use itertools::{iproduct, Itertools};
 use js_sys::Uint32Array;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
+use web_sys::{
+    WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation,
+};
 
 use crate::universe::Universe;
 
@@ -9,6 +11,7 @@ use crate::universe::Universe;
 pub struct WebGlProgramInfo {
     vertex_count: i32,
     cells_uniform_location: WebGlUniformLocation,
+    cells_texture: WebGlTexture,
 }
 
 #[wasm_bindgen]
@@ -131,40 +134,9 @@ impl Universe {
 
         context.bind_vertex_array(Some(&vao));
 
-        Ok(WebGlProgramInfo {
-            vertex_count: (vertices.len() / 4) as i32,
-            cells_uniform_location,
-        })
-    }
-
-    pub fn render_to_web_gl(
-        &self,
-        context: &WebGl2RenderingContext,
-        program_info: &WebGlProgramInfo,
-    ) -> Result<(), JsValue> {
-        let cells = self
-            .cells
-            .items
-            .iter()
-            .map(|cell| *cell as u8)
-            .collect_vec();
-
-        let texture = context.create_texture().ok_or("Failed to create texture")?;
-        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
+        let cells_texture = context.create_texture().ok_or("Failed to create texture")?;
+        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&cells_texture));
         context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
-        context
-            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_u8_array_and_src_offset(
-                WebGl2RenderingContext::TEXTURE_2D,
-                0,
-                WebGl2RenderingContext::ALPHA as i32,
-                self.cells.columns as i32,
-                self.cells.rows as i32,
-                0,
-                WebGl2RenderingContext::ALPHA,
-                WebGl2RenderingContext::UNSIGNED_BYTE,
-                &cells,
-                0,
-            )?;
         context.tex_parameteri(
             WebGl2RenderingContext::TEXTURE_2D,
             WebGl2RenderingContext::TEXTURE_WRAP_S,
@@ -185,8 +157,44 @@ impl Universe {
             WebGl2RenderingContext::TEXTURE_MAG_FILTER,
             WebGl2RenderingContext::NEAREST as i32,
         );
+
+        Ok(WebGlProgramInfo {
+            vertex_count: (vertices.len() / 4) as i32,
+            cells_uniform_location,
+            cells_texture,
+        })
+    }
+
+    pub fn render_to_web_gl(
+        &self,
+        context: &WebGl2RenderingContext,
+        program_info: &WebGlProgramInfo,
+    ) -> Result<(), JsValue> {
+        let cells = self
+            .cells
+            .items
+            .iter()
+            .map(|cell| *cell as u8)
+            .collect_vec();
+
+        context.bind_texture(
+            WebGl2RenderingContext::TEXTURE_2D,
+            Some(&program_info.cells_texture),
+        );
+        context
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_u8_array_and_src_offset(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::ALPHA as i32,
+                self.cells.columns as i32,
+                self.cells.rows as i32,
+                0,
+                WebGl2RenderingContext::ALPHA,
+                WebGl2RenderingContext::UNSIGNED_BYTE,
+                &cells,
+                0,
+            )?;
         context.active_texture(WebGl2RenderingContext::TEXTURE0);
-        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
 
         context.uniform1i(Some(&program_info.cells_uniform_location), 0);
 
