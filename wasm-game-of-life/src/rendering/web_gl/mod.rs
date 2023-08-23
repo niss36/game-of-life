@@ -30,38 +30,51 @@ impl Universe {
         console::time_end_with_label("Compile shaders");
 
         let position_attribute_location = context.get_attrib_location(&program, "position");
-        let cell_attribute_location = context.get_attrib_location(&program, "cell");
+        let coordinates_attribute_location = context.get_attrib_location(&program, "coordinates");
+
+        let window_size_uniform_location = context
+            .get_uniform_location(&program, "window_size")
+            .ok_or("Failed to get uniform location for `window_size`")?;
 
         let universe_size_uniform_location = context
             .get_uniform_location(&program, "universe_size")
             .ok_or("Failed to get uniform location for `universe_size`")?;
 
+        let cells_uniform_location = context
+            .get_uniform_location(&program, "cells")
+            .ok_or("Failed to get uniform location for `cells`")?;
+
         let columns = self.cells.columns;
         let rows = self.cells.rows;
 
         context.uniform2f(
-            Some(&universe_size_uniform_location),
+            Some(&window_size_uniform_location),
             ((cell_size + 1) * columns + 1) as f32,
             ((cell_size + 1) * rows + 1) as f32,
         );
 
+        context.uniform2f(
+            Some(&universe_size_uniform_location),
+            (columns - 1) as f32,
+            (rows - 1) as f32,
+        );
+
         console::time_with_label("Compute vertices");
         let vertices = iproduct!(0..columns, 0..rows)
-            .flat_map(|(column, row)| -> [usize; 18] {
-                let cell = self.cells.get((column, row)).unwrap();
-                let cell = *cell as usize;
-
+            .flat_map(|(column, row)| -> [usize; 24] {
                 let x_start = column * (cell_size + 1) + 1;
                 let y_start = row * (cell_size + 1) + 1;
 
                 let x_end = x_start + cell_size;
                 let y_end = y_start + cell_size;
 
+                // Flip Y axis because it points up in WebGL
+                let row = rows - row - 1;
+
                 [
-                    // top-left part of the square
-                    x_start, y_end, cell, x_start, y_start, cell, x_end, y_start, cell,
-                    // bottom-right part of the square
-                    x_end, y_start, cell, x_end, y_end, cell, x_start, y_end, cell,
+                    x_start, y_end, column, row, x_start, y_start, column, row, x_end, y_start,
+                    column, row, x_end, y_start, column, row, x_end, y_end, column, row, x_start,
+                    y_end, column, row,
                 ]
             })
             .map(|value| value as u32)
@@ -99,25 +112,74 @@ impl Universe {
             2,
             WebGl2RenderingContext::UNSIGNED_INT,
             false,
-            12,
+            16,
             0,
         );
         context.enable_vertex_attrib_array(position_attribute_location as u32);
 
-        context.vertex_attrib_i_pointer_with_i32(
-            cell_attribute_location as u32,
-            1,
+        context.vertex_attrib_pointer_with_i32(
+            coordinates_attribute_location as u32,
+            2,
             WebGl2RenderingContext::UNSIGNED_INT,
-            12,
+            false,
+            16,
             8,
         );
-        context.enable_vertex_attrib_array(cell_attribute_location as u32);
+        context.enable_vertex_attrib_array(coordinates_attribute_location as u32);
 
         context.bind_vertex_array(Some(&vao));
 
-        let vertices_count = (vertices.len() / 3) as i32;
+        let cells = self
+            .cells
+            .items
+            .iter()
+            .map(|cell| *cell as u8)
+            .collect_vec();
 
-        context.clear_color(0.5, 0.5, 0.5, 1.0);
+        let texture = context.create_texture().ok_or("Failed to create texture")?;
+        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
+        context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
+        context
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_u8_array_and_src_offset(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::ALPHA as i32,
+                columns as i32,
+                rows as i32,
+                0,
+                WebGl2RenderingContext::ALPHA,
+                WebGl2RenderingContext::UNSIGNED_BYTE,
+                &cells,
+                0,
+            )?;
+        context.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_S,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        context.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_T,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        context.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+            WebGl2RenderingContext::NEAREST as i32,
+        );
+        context.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+            WebGl2RenderingContext::NEAREST as i32,
+        );
+        context.active_texture(WebGl2RenderingContext::TEXTURE0);
+        context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&texture));
+
+        context.uniform1i(Some(&cells_uniform_location), 0);
+
+        let vertices_count = (vertices.len() / 4) as i32;
+
+        context.clear_color(0.75, 0.75, 0.75, 1.0);
         context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
         context.draw_arrays(WebGl2RenderingContext::TRIANGLES, 0, vertices_count);

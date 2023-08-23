@@ -1,14 +1,14 @@
 #version 300 es
 
-uniform vec2 universe_size;
+uniform vec2 window_size;
 
-in uint cell;
+in vec2 coordinates;
 in vec2 position;
 
-flat out uint varying_cell;
+flat out vec2 varying_coordinates;
 
 void main() {
-    varying_cell = cell;
+    varying_coordinates = coordinates;
 
-    gl_Position = vec4((position / universe_size) * 2.f - vec2(1.f, 1.f), 0, 1);
+    gl_Position = vec4((position / window_size) * 2.f - vec2(1.f, 1.f), 0, 1);
 }
