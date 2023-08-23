@@ -132,11 +132,8 @@ impl Universe {
         );
         context.enable_vertex_attrib_array(coordinates_attribute_location as u32);
 
-        context.bind_vertex_array(Some(&vao));
-
         let cells_texture = context.create_texture().ok_or("Failed to create texture")?;
         context.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&cells_texture));
-        context.pixel_storei(WebGl2RenderingContext::UNPACK_ALIGNMENT, 1);
         context.tex_parameteri(
             WebGl2RenderingContext::TEXTURE_2D,
             WebGl2RenderingContext::TEXTURE_WRAP_S,
