@@ -9,16 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@types/node": "20.4.3",
-    "@types/react": "18.2.15",
+    "@types/node": "20.6.4",
+    "@types/react": "18.2.22",
     "@types/react-dom": "18.2.7",
-    "eslint": "8.45.0",
-    "eslint-config-next": "13.4.12",
-    "next": "13.4.12",
+    "eslint": "8.50.0",
+    "eslint-config-next": "13.5.2",
+    "next": "13.5.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "5.1.6",
-    "wasm-game-of-life": "workspace:*",
-    "ts-game-of-life": "workspace:*"
+    "ts-game-of-life": "workspace:*",
+    "typescript": "5.2.2",
+    "wasm-game-of-life": "workspace:*"
   }
 }
