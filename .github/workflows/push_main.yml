@@ -1,0 +1,95 @@
+name: "Deploy main"
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: push_main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint_test_build:
+    name: Lint, test and build all packages
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Lint, test and build Rust code
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt
+        run: cargo fmt --all --check
+
+      - name: cargo build
+        run: cargo build --workspace --verbose
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace --verbose
+
+      - name: Install `wasm-pack`
+        run: cargo install wasm-pack
+
+      - name: Package WASM library
+        working-directory: wasm-game-of-life
+        run: wasm-pack build
+
+      # Lint, test and build TS code
+      - uses: pnpm/action-setup@v2.4.0
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test TS library
+        working-directory: ts-game-of-life
+        run: pnpm test-unit
+
+      - name: Package TS library
+        working-directory: ts-game-of-life
+        run: pnpm package
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: pnpm lint
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm build
+
+      # Upload built artifact
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: frontend/out
+
+  deploy_gh_pages:
+    name: Deploy to GitHub Pages
+
+    needs: [lint_test_build]
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
