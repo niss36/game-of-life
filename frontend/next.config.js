@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
+  basePath: "/game-of-life",
   reactStrictMode: true,
   webpack: (config, { isServer }) => {
     const wasmModuleFilename = isServer
